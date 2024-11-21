@@ -1,4 +1,78 @@
-from cohen_code.import_modules import *
+
+
+# imports
+import warnings
+warnings.filterwarnings(action="ignore")
+import pandas as pd 
+pd.set_option('display.max_columns',None)
+
+import matplotlib.pyplot as plt 
+import seaborn as sns
+import numpy as np
+import tensorflow as tf
+import sympy as sym
+import networkx as nx
+
+import keras
+import string
+import pickle
+import datetime
+import pymysql
+import hashlib
+import io
+import requests
+import re
+import fuzzywuzzy
+import os
+import gensim
+import itertools
+import time
+import random
+import math
+import pulp
+
+# 'from' imports
+from tensorflow.keras.layers import *
+from scipy.optimize import *
+from operator import itemgetter
+from gensim import corpora
+from datetime import date
+from fuzzywuzzy import fuzz
+from fuzzywuzzy import process
+from selenium import webdriver
+from selenium.webdriver import ChromeOptions
+from bs4 import BeautifulSoup
+from pathlib import Path
+from PIL import Image
+from sqlalchemy import create_engine
+from operator import itemgetter
+from graphviz import Source
+from IPython.display import display
+from sklearn.model_selection import *
+from sklearn.tree import *
+from pulp import * 
+from mlxtend.feature_selection import SequentialFeatureSelector as SFS
+from mlxtend.plotting import plot_sequential_feature_selection as sfs_plot
+from sklearn.linear_model import *
+from youtube_transcript_api import YouTubeTranscriptApi
+from sklearn.tree import *
+from datetime import date
+from sklearn.preprocessing import *
+from sklearn.metrics import *
+from sklearn.cluster import *
+from sklearn.ensemble import *
+from sklearn.decomposition import *
+from sklearn.feature_selection import *
+from sklearn.manifold import *
+from sklearn.impute import *
+from tensorflow.keras.models import *
+from sklearn.datasets import make_blobs
+from scipy import stats
+from unidecode import *
+from scipy.stats import *
+from xgboost import *
+from sklearn.neighbors import *
+from sklearn.svm import *
 
 
 # classification
@@ -28,17 +102,6 @@ keras_seq = Sequential()
 
 def model_clean_pipeline(df):
 
-    target2 = 'xG_a'
-    target1 = 'xG_h'
-    target3='outcome'
-
-    df.drop([target1,target3],axis=1).select_dtypes(include=[float,int])
-    #y1=df[target1]
-    #y2=df[target2]
-    y=df[target3]
-
-    df.fillna(0,inplace=True)  
-
 
     for col in ['Unnamed: 0','h_h','a_a','a_h','h_a','home_team','goals_h','goals_a','forward_passes_attempted_a','c_h','l_H']:
         df.drop(col,axis=1,inplace=True,errors='ignore')
@@ -46,6 +109,7 @@ def model_clean_pipeline(df):
     df.reset_index(inplace=True,drop=True)  
 
     df=df.select_dtypes(include=[float,int])
+    df.fillna(0,inplace=True)  ,
 
     return df
 
@@ -122,130 +186,6 @@ def cluster_model(X, method='kmeans', n_clusters=3):
         plt.legend(loc='best')
         plt.tight_layout()
         plt.show()
-
-
-def classi_model(X, Y, choice='best', feature_selection='none', rocc=False, coef=False, feature_importance=False):
-    # Ensure Y is binary by mapping 1 and 2 to 0 and 1
-    if len(Y.unique()) > 2:
-        print("Target variable should have only two unique classes. Mapping values to [0, 1]...")
-        Y = Y.map({1: 0, 2: 1})  # Convert 1 -> 0, 2 -> 1
-
-    # Check again if Y is binary
-    if len(Y.unique()) != 2:
-        print("Target variable is still not binary!")
-        return
-
-    # Standardize features if needed (using the custom pipeline for preprocessing)
-    X = model_clean_pipeline(X)
-    X_scaled = X  # Assuming X is already scaled after cleaning
-
-    X_train, X_test, y_train, y_test = train_test_split(X_scaled, Y, test_size=0.2, random_state=42)
-
-    # List of models for binary classification
-    models = [logreg, xgbc, rfc, knnc, dtc, svm]
-    model_names = ['Logistic Regression', 'XGBoost', 'Random Forest', 'KNN', 'Decision Tree', 'SVM']
-
-    if choice == 'best':
-        final_model = None
-        best_score = 0
-        for m in models:
-            m.fit(X_train, y_train)
-            p = m.predict(X_test)
-            score = accuracy_score(y_test, p)  # Use accuracy for binary classification
-            if score > best_score:
-                best_score = score
-                final_model = m
-        final_model.fit(X_train, y_train)
-        p = final_model.predict(X_test)
-
-    else:
-        idx = {
-            'logreg': 0,
-            'xg': 1,
-            'rf': 2,
-            'knn': 3,
-            'dt': 4,
-            'svm': 5
-        }.get(choice, 0)  # Default to logistic regression if choice is invalid
-        m = models[idx]
-        m.fit(X_train, y_train)
-        p = m.predict(X_test)
-
-    # Feature Selection via RFE (if enabled)
-    if feature_selection == 'rfe':
-        rfe = RFE(final_model, n_features_to_select=5)  # Select top 5 features
-        X_train_rfe = rfe.fit_transform(X_train, y_train)
-        X_test_rfe = rfe.transform(X_test)
-        final_model.fit(X_train_rfe, y_train)
-        p = final_model.predict(X_test_rfe)
-
-    # Metrics for Binary Classification
-    score = accuracy_score(y_test, p)  # Accuracy for binary classification
-    print(f'Accuracy score: {score}')
-    print('\n')
-    print(classification_report(y_test, p))  # Precision, recall, f1-score, and support
-    print('\n')
-
-    if coef:
-        return
-
-    # Confusion Matrix
-    plt.figure(figsize=(15, 8))
-    sns.heatmap(confusion_matrix(y_test, p), annot=True, fmt='d', cmap='Blues', cbar=False)
-    plt.title('Confusion Matrix')
-    plt.xlabel('Predicted')
-    plt.ylabel('True')
-    plt.tight_layout()
-    plt.show()
-
-    # ROC Curve and AUC for Binary Classification
-    if rocc == True:
-        if hasattr(final_model, "predict_proba"):  # Check if the model supports probability prediction
-            y_score = final_model.predict_proba(X_test)[:, 1]
-        elif hasattr(final_model, "decision_function"):  # For models like SVM
-            y_score = final_model.decision_function(X_test)
-        else:
-            print("ROC curve cannot be generated for this model.")
-            return
-
-        fpr, tpr, _ = roc_curve(y_test, y_score)
-        roc_auc = auc(fpr, tpr)
-
-        plt.figure(figsize=(15, 8))
-        plt.plot(fpr, tpr, color='blue', lw=2, label=f'ROC curve (AUC = {roc_auc:.2f})')
-        plt.plot([0, 1], [0, 1], color='red', linestyle='--')
-        plt.xlabel('False Positive Rate')
-        plt.ylabel('True Positive Rate')
-        plt.title('Receiver Operating Characteristic (ROC) Curve')
-        plt.legend(loc='lower right')
-        plt.tight_layout()
-        plt.show()
-
-    # Feature Importance (if enabled)
-    if feature_importance:
-        # Check if model supports feature importance (works for Random Forest, XGBoost, Logistic Regression, etc.)
-        if hasattr(final_model, 'feature_importances_'):
-            feature_importance_values = final_model.feature_importances_
-        elif hasattr(final_model, 'coef_'):
-            feature_importance_values = final_model.coef_[0]  # For models like Logistic Regression
-        else:
-            print("Feature importance is not supported for this model.")
-            return
-
-        # Plot the feature importance
-        plt.figure(figsize=(15, 8))
-        sns.barplot(x=feature_importance_values, y=X.columns, palette='viridis')
-        plt.title('Feature Importance')
-        plt.xlabel('Importance')
-        plt.ylabel('Features')
-        plt.tight_layout()
-        plt.show()
-
-        # Return sorted feature importance
-        a = list(zip(X.columns, feature_importance_values))
-        return sorted(a, key=lambda x: x[1], reverse=True)
-
-
 
 
 def reg_model(X, Y, choice='best', feature_selection='none', regularization='none'):
@@ -377,3 +317,134 @@ def reg_model(X, Y, choice='best', feature_selection='none', regularization='non
 
     plt.tight_layout()
     plt.show()
+
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.model_selection import train_test_split
+from sklearn.feature_selection import RFE
+from sklearn.metrics import roc_curve, auc
+
+def classi_model(X, Y, choice='best', feature_selection='none', rocc=False, coef=False, feature_importance=False):
+    # Check if Y has more than 2 classes
+    unique_classes = Y.unique()
+    print(f"Unique classes in target variable: {unique_classes}")
+
+    # Standardize features if needed (using the custom pipeline for preprocessing)
+    #X = model_clean_pipeline(X)
+    X_scaled = X  # Assuming X is already scaled after cleaning
+
+    X_train, X_test, y_train, y_test = train_test_split(X_scaled, Y, test_size=0.2, random_state=42)
+
+    # List of models for classification
+    models = [logreg, xgbc, rfc, knnc, dtc, svm]
+    model_names = ['Logistic Regression', 'XGBoost', 'Random Forest', 'KNN', 'Decision Tree', 'SVM']
+
+    if choice == 'best':
+        final_model = None
+        best_score = 0
+        for m in models:
+            m.fit(X_train, y_train)
+            p = m.predict(X_test)
+            score = accuracy_score(y_test, p)  # Use accuracy for multi-class classification
+            if score > best_score:
+                best_score = score
+                final_model = m
+        final_model.fit(X_train, y_train)
+        p = final_model.predict(X_test)
+
+    else:
+        idx = {
+            'logreg': 0,
+            'xg': 1,
+            'rf': 2,
+            'knn': 3,
+            'dt': 4,
+            'svm': 5
+        }.get(choice, 0)  # Default to logistic regression if choice is invalid
+        m = models[idx]
+        m.fit(X_train, y_train)
+        p = m.predict(X_test)
+
+    # Feature Selection via RFE (if enabled)
+    if feature_selection == 'rfe':
+        rfe = RFE(final_model, n_features_to_select=5)  # Select top 5 features
+        X_train_rfe = rfe.fit_transform(X_train, y_train)
+        X_test_rfe = rfe.transform(X_test)
+        final_model.fit(X_train_rfe, y_train)
+        p = final_model.predict(X_test_rfe)
+
+    # Metrics for Multi-Class Classification
+    score = accuracy_score(y_test, p)  # Accuracy for multi-class classification
+    print(f'Accuracy score: {score}')
+    print('\n')
+    print(classification_report(y_test, p))  # Precision, recall, f1-score, and support
+    print('\n')
+
+    if coef:
+        return
+
+    # Confusion Matrix
+    plt.figure(figsize=(15, 8))
+    sns.heatmap(confusion_matrix(y_test, p), annot=True, fmt='d', cmap='Blues', cbar=False)
+    plt.title('Confusion Matrix')
+    plt.xlabel('Predicted')
+    plt.ylabel('True')
+    plt.tight_layout()
+    plt.show()
+
+    # ROC Curve and AUC for Multi-Class Classification
+    if rocc == True:
+        if hasattr(final_model, "predict_proba"):  # Check if the model supports probability prediction
+            y_score = final_model.predict_proba(X_test)
+        elif hasattr(final_model, "decision_function"):  # For models like SVM
+            y_score = final_model.decision_function(X_test)
+        else:
+            print("ROC curve cannot be generated for this model.")
+            return
+        
+        # Plot ROC curve for each class
+        n_classes = len(unique_classes)
+        fpr = dict()
+        tpr = dict()
+        roc_auc = dict()
+        
+        for i in range(n_classes):
+            fpr[i], tpr[i], _ = roc_curve(y_test == unique_classes[i], y_score[:, i])
+            roc_auc[i] = auc(fpr[i], tpr[i])
+
+        plt.figure(figsize=(15, 8))
+        for i in range(n_classes):
+            plt.plot(fpr[i], tpr[i], lw=2, label=f'Class {unique_classes[i]} ROC curve (AUC = {roc_auc[i]:.2f})')
+
+        plt.plot([0, 1], [0, 1], color='red', linestyle='--')
+        plt.xlabel('False Positive Rate')
+        plt.ylabel('True Positive Rate')
+        plt.title('Receiver Operating Characteristic (ROC) Curve for Multi-Class')
+        plt.legend(loc='lower right')
+        plt.tight_layout()
+        plt.show()
+
+    # Feature Importance (if enabled)
+    if feature_importance:
+        # Check if model supports feature importance (works for Random Forest, XGBoost, Logistic Regression, etc.)
+        if hasattr(final_model, 'feature_importances_'):
+            feature_importance_values = final_model.feature_importances_
+        elif hasattr(final_model, 'coef_'):
+            feature_importance_values = final_model.coef_[0]  # For models like Logistic Regression
+        else:
+            print("Feature importance is not supported for this model.")
+            return
+
+        # Plot the feature importance
+        plt.figure(figsize=(15, 8))
+        sns.barplot(x=feature_importance_values, y=X.columns, palette='viridis')
+        plt.title('Feature Importance')
+        plt.xlabel('Importance')
+        plt.ylabel('Features')
+        plt.tight_layout()
+        plt.show()
+
+        # Return sorted feature importance
+        a = list(zip(X.columns, feature_importance_values))
+        return sorted(a, key=lambda x: x[1], reverse=True)
